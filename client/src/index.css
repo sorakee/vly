@@ -14,8 +14,16 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+body, html {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
+#game-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
