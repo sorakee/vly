@@ -2,12 +2,13 @@ import React, { useRef, useEffect, useState } from 'react';
 import Phaser from 'phaser';
 import GameScreen from './screens/GameScreen';
 import { initAudio } from '../services/audio';
-import { io } from 'socket.io-client';
+import { socket } from '../services/socket';
 import './styles/Game.css'
+
 
 const Game = () => {
     const gameRef = useRef(null);
-    const [micPerm, setMicPerm] = useState(false);
+    const [micPerm, setMicPerm] = useState(null);
 
     useEffect(() => {
         const checkMicPermission = async () => {
@@ -25,9 +26,8 @@ const Game = () => {
     }, []);
 
     useEffect(() => {
-        if (!micPerm) return;
+        if (!micPerm || micPerm === null) return;
 
-        const socket = io('http://localhost:5000');
         const config = {
             type: Phaser.AUTO,
             width: 720,
@@ -47,6 +47,7 @@ const Game = () => {
 
         const game = new Phaser.Game({ ...config, parent: 'game-container' });
         gameRef.current = game;
+        game.scene.start('GameScreen', { socket });
 
         return () => {
             if (gameRef.current) {

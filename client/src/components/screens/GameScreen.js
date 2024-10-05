@@ -3,6 +3,12 @@ import Phaser from "phaser";
 class GameScreen extends Phaser.Scene {
     constructor() {
         super('GameScreen');
+        this.socket = null;
+    }
+
+    init(data) {
+        this.socket = data.socket;
+        console.log(this.socket);
     }
 
     preload() {
@@ -10,7 +16,7 @@ class GameScreen extends Phaser.Scene {
     }
 
     create() {
-        // TODO: Setup game objects on the scene 
+        // TODO: Setup game objects on the scene
     }
 
     update() {
