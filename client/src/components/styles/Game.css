@@ -1,0 +1,37 @@
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#mic-perm {
+    width: 100%;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    display: flex;
+    justify-content: center; 
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#mic-perm > button {
+    margin-top: 8px;
+    background: black;
+    color: white;
+    border-radius: 20px;
+    padding: 10px;
+    font-family: "Press Start 2P", system-ui;
+    transition: all 250ms ease-in-out
+}
+
+#mic-perm > button:hover {
+    background-color: white;
+    color: black
+}
