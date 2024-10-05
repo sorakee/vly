@@ -1,10 +1,9 @@
 let audioContext;
 let analyser;
 
-export const initAudio = async () => {
+export const initAudio = async (stream) => {
     try {
         audioContext = new window.AudioContext();
-        const stream = await audioContext.mediaDevices.getUserMedia({ audio: true });
         // Microphone source
         const source = audioContext.createMediaStreamSource(stream);
         analyser = audioContext.createAnalyser();

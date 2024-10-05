@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import Phaser from 'phaser';
 import GameScreen from './screens/GameScreen';
 import { initAudio } from '../services/audio';
+import { io } from 'socket.io-client';
 import './styles/Game.css'
 
 const Game = () => {
@@ -11,8 +12,9 @@ const Game = () => {
     useEffect(() => {
         const checkMicPermission = async () => {
             try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 setMicPerm(true);
+                initAudio(stream);
             } catch (err) {
                 console.error('Microphone permission denied:', err);
                 setMicPerm(false);
@@ -23,50 +25,47 @@ const Game = () => {
     }, []);
 
     useEffect(() => {
-        if (micPerm) {
-            const config = {
-                type: Phaser.AUTO,
-                width: 720,
-                height: 1280,
-                scale: {
-                    mode: Phaser.Scale.FIT
-                },
-                physics: {
-                    default: 'arcade',
-                    arcade: {
-                        gravity: { y: 300 },
-                        debug: true
-                    }
-                },
-                scene: [GameScreen]
-            };
+        if (!micPerm) return;
 
-            const game = new Phaser.Game({ ...config, parent: 'game-container' });
-            gameRef.current = game;
-
-            initAudio();
-
-            return () => {
-                if (gameRef.current) {
-                    gameRef.current.destroy(true);
+        const socket = io('http://localhost:5000');
+        const config = {
+            type: Phaser.AUTO,
+            width: 720,
+            height: 1280,
+            scale: {
+                mode: Phaser.Scale.FIT
+            },
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: true
                 }
-            };
-        }
-    }, [micPerm]);
+            },
+            scene: [GameScreen]
+        };
 
-    if (!micPerm) {
-        return (
-            <div id='mic-perm'>
-                <h2>MICROPHONE REQUIRED</h2>
-                <p>Please grant microphone permission to play the game.</p>
-                <button onClick={() => window.location.reload()}>RETRY</button>
-            </div>
-        );
-    }
+        const game = new Phaser.Game({ ...config, parent: 'game-container' });
+        gameRef.current = game;
+
+        return () => {
+            if (gameRef.current) {
+                gameRef.current.destroy(true);
+                gameRef.current = null;
+            }
+            socket.disconnect();
+        };
+    }, [micPerm]);
 
     return (
         <>
-            <div id='game-container' />
+            {micPerm ? (<div id='game-container' />) : (
+                <div id='mic-perm'>
+                    <h2>MICROPHONE REQUIRED</h2>
+                    <p>Please grant microphone permission to play the game.</p>
+                    <button onClick={() => window.location.reload()}>RETRY</button>
+                </div>
+            )}
         </>
     );
 }
