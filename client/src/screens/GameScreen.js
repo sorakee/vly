@@ -1,5 +1,13 @@
 import Phaser from 'phaser';
 
+const BOUNCE = 0.3;
+const GRAVITY_Y = 2000;
+const STARTPOS_X = 180;
+const STARTPOX_Y = 546;
+const COLLSIZE_X = 20;
+const COLLSIZE_Y = 30;
+const MAX_VELOCITY_Y = -1200;
+
 class GameScreen extends Phaser.Scene {
     constructor() {
         super('GameScreen');
@@ -8,11 +16,10 @@ class GameScreen extends Phaser.Scene {
         this.opponent = null;
         this.platforms = null;
         this.cursors = null;
-        this.scrollSpeed = 1;
-        this.score = 0;
         this.gameOver = false;
         this.voiceMeter = null;
         this.playerSpeed = 180;
+        this.scrollSpeed = 1;
     }
 
     init(data) {
@@ -38,15 +45,14 @@ class GameScreen extends Phaser.Scene {
         this.platforms = this.physics.add.staticGroup();
         this.platforms.create(gameWidth * 0.5, gameHeight, 'ground');
 
-        this.player = this.physics.add.sprite(100, 450, 'player');
-        this.player.setBounce(0.3);
-        this.player.setCollideWorldBounds(true);
-        this.player.body.onWorldBounds = true;
-        this.player.body.setGravityY(800);
-        this.player.body.setSize(20, 30);
+        this.player = this.createCharacter(this, 'player');
+        this.opponent = this.createCharacter(this, 'opponent', 0.5);
+
         this.player.body.world.on('worldbounds', () => {
-            this.player.flipX = !this.player.flipX;
-            this.playerSpeed *= -1;
+            if (this.player.body.blocked.left || this.player.body.blocked.right) {
+                this.player.flipX = !this.player.flipX;
+                this.playerSpeed *= -1;
+            }
         });
         this.anims.create({
             key: 'run',
@@ -60,15 +66,6 @@ class GameScreen extends Phaser.Scene {
             frameRate: 8,
             repeat: 0
         });
-        this.player.anims.play('run');
-
-        this.opponent = this.physics.add.sprite(200, 450, 'opponent');
-        this.opponent.alpha = 0.5;
-        this.opponent.setBounce(0.3);
-        this.opponent.setCollideWorldBounds(true);
-        this.opponent.body.onWorldBounds = true;
-        this.opponent.body.setGravityY(400);
-        this.opponent.body.setSize(20, 30);
 
         this.physics.add.collider(this.player, this.platforms);
         this.physics.add.collider(this.opponent, this.platforms);
@@ -78,15 +75,34 @@ class GameScreen extends Phaser.Scene {
 
     update() {
         // Automatic horizontal player movement
-        console.log(this.player.anims.currentAnim?.key)
         this.player.setVelocityX(this.playerSpeed);
         const deltaY = this.player.body.position.y - this.player.body.prev.y;
         if (this.cursors.up.isDown && this.player.body.touching.down) {
             this.player.anims.play('jump');
-            this.player.setVelocityY(-600);
+            this.player.setVelocityY(MAX_VELOCITY_Y);
         } else if (deltaY > -0.1 && this.player.body.onFloor() && this.player.anims.currentAnim?.key !== 'run') {
             this.player.anims.play('run');
         }
+    }
+
+    initCharacters() {
+        
+
+        
+
+        
+    }
+
+    /** @returns {Phaser.Types.Physics.Arcade.SpriteWithDynamicBody} */
+    createCharacter(scene, spriteKey, alpha = 1) {
+        const character = scene.physics.add.sprite(STARTPOS_X, STARTPOX_Y, spriteKey);
+        character.setBounce(0.3);
+        character.setCollideWorldBounds(true);
+        character.body.onWorldBounds = true;
+        character.body.setGravityY(GRAVITY_Y);
+        character.body.setSize(COLLSIZE_X, COLLSIZE_Y);
+        character.alpha = alpha;
+        return character;
     }
 }
 
