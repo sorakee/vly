@@ -85,14 +85,6 @@ class GameScreen extends Phaser.Scene {
         }
     }
 
-    initCharacters() {
-        
-
-        
-
-        
-    }
-
     /** @returns {Phaser.Types.Physics.Arcade.SpriteWithDynamicBody} */
     createCharacter(scene, spriteKey, alpha = 1) {
         const character = scene.physics.add.sprite(STARTPOS_X, STARTPOX_Y, spriteKey);
