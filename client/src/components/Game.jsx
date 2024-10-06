@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Phaser from 'phaser';
-import GameScreen from './screens/GameScreen';
+import GameScreen from '../screens/GameScreen';
 import { initAudio } from '../services/audio';
 import { socket } from '../services/socket';
 import './styles/Game.css'
@@ -30,8 +30,8 @@ const Game = () => {
 
         const config = {
             type: Phaser.AUTO,
-            width: 720,
-            height: 1280,
+            width: 360,
+            height: 640,
             scale: {
                 mode: Phaser.Scale.FIT
             },
@@ -42,6 +42,7 @@ const Game = () => {
                     debug: true
                 }
             },
+            backgroundColor: '#87CEEB',
             scene: [GameScreen]
         };
 

@@ -1,3 +1,5 @@
+// May need to be move these and initialize game state when
+// player enters a 'room'
 const GameState = require('./gameState');
 const gameState = new GameState();
 
