@@ -5,7 +5,7 @@ const BOUNCE_X = 0.5;
 const BOUNCE_Y = 0;
 const GRAVITY_Y = 2000;
 const STARTPOS_X = 180;
-const STARTPOX_Y = 546;
+const STARTPOX_Y = 480;
 const COLLSIZE_X = 20;
 const COLLSIZE_Y = 30;
 const MAX_VELOCITY_Y = -1100;
@@ -20,8 +20,8 @@ class GameScreen extends Phaser.Scene {
         this.cursors = null;
         this.gameOver = false;
         this.voiceMeter = null;
-        this.playerSpeed = 180;
-        this.scrollSpeed = 1;
+        this.playerSpeed = 200;
+        this.scrollSpeed = 0.2;
         this.soundFX = new Map();
     }
 
@@ -51,7 +51,7 @@ class GameScreen extends Phaser.Scene {
         this.soundFX.set('stepSFX', this.sound.add('stepSFX', { loop: true, volume: 0.8 }))
 
         this.platforms = this.physics.add.staticGroup();
-        this.platforms.create(gameWidth * 0.5, gameHeight, 'ground');
+        this.platforms.create(gameWidth * 0.5, gameHeight * 0.9, 'ground');
 
         this.player = this.createCharacter(this, 'player');
         this.opponent = this.createCharacter(this, 'opponent', 0.5);
@@ -59,8 +59,14 @@ class GameScreen extends Phaser.Scene {
         this.player.body.world.on('worldbounds', () => {
             if (this.player.body.blocked.left || this.player.body.blocked.right) {
                 this.player.flipX = !this.player.flipX;
-                this.playerSpeed *= -1;
-            } else if (this.player.body.blocked.down) {
+                this.playerSpeed = this.playerSpeed * -1;
+            }
+            if (this.player.body.blocked.down) {
+                console.log("BOTTOM BOUNDARY TOUCHED. GAME OVER NOOB")
+                this.playerSpeed = 0;
+                this.player.setVelocity(0);
+                this.player.anims.stop();
+                this.soundFX.get('stepSFX').stop();
                 this.gameOver = true;
             }
         });
@@ -79,6 +85,7 @@ class GameScreen extends Phaser.Scene {
 
         this.physics.add.collider(this.player, this.platforms);
         this.physics.add.collider(this.opponent, this.platforms);
+        this.opponent.body.onWorldBounds = false;
 
         // Placeholder jump button
         // TODO: Replace with mic input instead
@@ -86,31 +93,10 @@ class GameScreen extends Phaser.Scene {
     }
 
     update() {
-        if (this.gameOver) {
-            console.log("YOU LOSE");
-            return;
-        }
+        if (this.gameOver) return;
 
-        // Get audio source (e.g. mic) vol. level
-        const srcVol = getVolumeLevel();
-        // console.log(srcVol);
-        const deltaY = this.player.body.position.y - this.player.body.prev.y;
-
-        // Automatic horizontal player movement
-        this.player.setVelocityX(this.playerSpeed);
-        if (this.cursors.up.isDown && this.player.body.touching.down) {
-            this.soundFX.get('jumpSFX').play();
-            this.player.anims.play('player-jump');
-            this.player.setVelocityY(MAX_VELOCITY_Y);
-            if (this.soundFX.get('stepSFX').isPlaying) {
-                this.soundFX.get('stepSFX').stop();
-            }
-        } else if (deltaY > -0.1 && this.player.body.onFloor() && this.player.anims.currentAnim?.key !== 'player-run') {
-            this.player.anims.play('player-run').on;
-            if (!this.soundFX.get('stepSFX').isPlaying) {
-                this.soundFX.get('stepSFX').play();
-            }
-        }
+        this.playerMovement();   
+        this.scrollMap();
     }
 
     /** 
@@ -129,6 +115,42 @@ class GameScreen extends Phaser.Scene {
         character.body.setSize(COLLSIZE_X, COLLSIZE_Y);
         character.alpha = alpha;
         return character;
+    }
+
+    playerMovement() {
+        // Get audio source (e.g. mic) vol. level
+        const srcVol = getVolumeLevel();
+        // console.log(srcVol);
+        const deltaY = this.player.body.position.y - this.player.body.prev.y;
+
+        // Automatic horizontal player movement
+        this.player.setVelocityX(this.playerSpeed);
+        // Jump and Landing
+        // if (srcVol !== 0 && this.player.body.touching.down)
+        if (this.cursors.up.isDown && this.player.body.touching.down) {
+            this.soundFX.get('jumpSFX').play();
+            this.player.anims.play('player-jump');
+            this.player.setVelocityY(MAX_VELOCITY_Y);
+            if (this.soundFX.get('stepSFX').isPlaying) {
+                this.soundFX.get('stepSFX').stop();
+            }
+        } else if (deltaY > -0.1 && this.player.body.onFloor() && this.player.anims.currentAnim?.key !== 'player-run') {
+            this.player.anims.play('player-run').on;
+            if (!this.soundFX.get('stepSFX').isPlaying) {
+                this.soundFX.get('stepSFX').play();
+            }
+        }
+    }
+
+    scrollMap() {
+        this.platforms.children.iterate((platform) => {
+            platform.y += this.scrollSpeed;
+            platform.body.updateFromGameObject();
+        });
+    }
+
+    createPlatform () {
+        // TODO: Create a platform as game scrolls down
     }
 }
 
