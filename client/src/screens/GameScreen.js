@@ -61,14 +61,6 @@ class GameScreen extends Phaser.Scene {
                 this.player.flipX = !this.player.flipX;
                 this.playerSpeed = this.playerSpeed * -1;
             }
-            if (this.player.body.blocked.down) {
-                console.log("BOTTOM BOUNDARY TOUCHED. GAME OVER NOOB")
-                this.playerSpeed = 0;
-                this.player.setVelocity(0);
-                this.player.anims.stop();
-                this.soundFX.get('stepSFX').stop();
-                this.gameOver = true;
-            }
         });
         this.anims.create({
             key: 'player-run',
@@ -90,6 +82,8 @@ class GameScreen extends Phaser.Scene {
         // Placeholder jump button
         // TODO: Replace with mic input instead
         this.cursors = this.input.keyboard.createCursorKeys();
+
+        // this.make.tilemap().create
     }
 
     update() {
@@ -97,6 +91,7 @@ class GameScreen extends Phaser.Scene {
 
         this.playerMovement();   
         this.scrollMap();
+        this.checkForGameOver();
     }
 
     /** 
@@ -149,8 +144,20 @@ class GameScreen extends Phaser.Scene {
         });
     }
 
+    checkForGameOver() {
+        if (this.player.y + 16 > this.sys.game.canvas.height) {
+            console.log('Game Over: Player fell into the void!');
+            this.playerSpeed = 0;
+            this.player.setVelocity(0);
+            this.player.anims.stop();
+            this.soundFX.get('stepSFX').stop();
+            this.gameOver = true;
+        }
+    }
+
     createPlatform () {
         // TODO: Create a platform as game scrolls down
+        
     }
 }
 
