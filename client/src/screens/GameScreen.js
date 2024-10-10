@@ -8,7 +8,7 @@ const STARTPOS_X = 180;
 const STARTPOX_Y = 480;
 const COLLSIZE_X = 20;
 const COLLSIZE_Y = 30;
-const MAX_VELOCITY_Y = -1100;
+const MAX_VELOCITY_Y = -600;
 
 class GameScreen extends Phaser.Scene {
     constructor() {
@@ -33,11 +33,11 @@ class GameScreen extends Phaser.Scene {
     preload() {
         this.load.image('ground', 'src/assets/ground.png');
         this.load.spritesheet(
-            'player', 'src/assets/player-spritesheet.png', 
+            'player', 'src/assets/player-spritesheet.png',
             { frameWidth: 32, frameHeight: 32 }
         );
         this.load.spritesheet(
-            'opponent', 'src/assets/opponent-spritesheet.png', 
+            'opponent', 'src/assets/opponent-spritesheet.png',
             { frameWidth: 32, frameHeight: 32 }
         );
         this.load.audio('jumpSFX', 'src/assets/jumpSFX.mp3');
@@ -47,7 +47,6 @@ class GameScreen extends Phaser.Scene {
     create() {
         let { width: gameWidth, height: gameHeight } = this.sys.game.canvas;
 
-        this.soundFX.set('jumpSFX', this.sound.add('jumpSFX'));
         this.soundFX.set('stepSFX', this.sound.add('stepSFX', { loop: true, volume: 0.8 }))
 
         this.platforms = this.physics.add.staticGroup();
@@ -78,18 +77,12 @@ class GameScreen extends Phaser.Scene {
         this.physics.add.collider(this.player, this.platforms);
         this.physics.add.collider(this.opponent, this.platforms);
         this.opponent.body.onWorldBounds = false;
-
-        // Placeholder jump button
-        // TODO: Replace with mic input instead
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // this.make.tilemap().create
     }
 
     update() {
         if (this.gameOver) return;
 
-        this.playerMovement();   
+        this.playerMovement();
         this.scrollMap();
         this.checkForGameOver();
     }
@@ -114,20 +107,25 @@ class GameScreen extends Phaser.Scene {
 
     playerMovement() {
         // Get audio source (e.g. mic) vol. level
-        const srcVol = getVolumeLevel();
+        let srcVol = getVolumeLevel();
+        // Convert range from 0.6 - 1.0 to 0 - 1
+        srcVol = (srcVol - 0.6) / 0.4;
+
         // console.log(srcVol);
         const deltaY = this.player.body.position.y - this.player.body.prev.y;
 
         // Automatic horizontal player movement
         this.player.setVelocityX(this.playerSpeed);
-        // Jump and Landing
-        // if (srcVol !== 0 && this.player.body.touching.down)
-        if (this.cursors.up.isDown && this.player.body.touching.down) {
-            this.soundFX.get('jumpSFX').play();
-            this.player.anims.play('player-jump');
-            this.player.setVelocityY(MAX_VELOCITY_Y);
-            if (this.soundFX.get('stepSFX').isPlaying) {
-                this.soundFX.get('stepSFX').stop();
+
+        // Fly and Landing
+        if (srcVol > 0.2) {
+            this.player.setVelocityY(Phaser.Math.Linear(0, MAX_VELOCITY_Y, srcVol));
+            if (this.player.body.blocked.down) {
+                this.player.anims.play('player-jump');
+
+                if (this.soundFX.get('stepSFX').isPlaying) {
+                    this.soundFX.get('stepSFX').stop();
+                }
             }
         } else if (deltaY > -0.1 && this.player.body.onFloor() && this.player.anims.currentAnim?.key !== 'player-run') {
             this.player.anims.play('player-run').on;
@@ -155,9 +153,8 @@ class GameScreen extends Phaser.Scene {
         }
     }
 
-    createPlatform () {
+    createPlatform() {
         // TODO: Create a platform as game scrolls down
-        
     }
 }
 
