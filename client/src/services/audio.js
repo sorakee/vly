@@ -21,7 +21,7 @@ export const getVolumeLevel = () => {
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(dataArray);
 
-    // Find the maximum volume level
+    // Find the maximum volume level from the frequency bins
     const maxVol = Math.max(...dataArray);
 
     // Normalize to 0-1 range
