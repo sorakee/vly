@@ -25,7 +25,6 @@ class GameScreen extends Phaser.Scene {
         this.scrollSpeed = 0.2;
         this.soundFX = new Map();
         this.platformPool = null;
-        this.platformGrid = {};
         this.platforms = null;
         this.lastPlatformY = null;
     }
@@ -152,7 +151,7 @@ class GameScreen extends Phaser.Scene {
         } else if (deltaY > -0.1 && this.player.body.onFloor() && this.player.anims.currentAnim?.key !== 'player-run') {
             this.player.anims.play('player-run');
             if (!this.soundFX.get('stepSFX').isPlaying) {
-                this.soundFX.get('stepSFX').play();
+                //this.soundFX.get('stepSFX').play();
             }
         }
     }
@@ -169,7 +168,8 @@ class GameScreen extends Phaser.Scene {
     }
 
     checkForGameOver() {
-        if (this.player.y + 16 > this.sys.game.canvas.height) {
+        // If player flies too high or fall, then game over.
+        if (this.player.y + 16 > this.sys.game.canvas.height || this.player.y - 16 < 0) {
             console.log('Game Over: Player fell into the void!');
             this.playerSpeed = 0;
             this.player.setVelocity(0);
@@ -181,61 +181,29 @@ class GameScreen extends Phaser.Scene {
 
     createPlatformAtPosY(posY) {
         const minMiddleTiles = 1;
-        const maxMiddleTiles = 6;
+        const maxMiddleTiles = 10;
 
         const numMiddleTiles = Phaser.Math.Between(minMiddleTiles, maxMiddleTiles);
         const platformWidth = (numMiddleTiles + 2) * 32;
 
-        let maxAttempts = 10;
         let posX = Phaser.Math.Between(0, 360 - platformWidth);
-        let attempt = 0;
-
-        while (this.isGridCellOccupied(posX, posY) && attempt < maxAttempts) {
-            posX = Phaser.Math.Between(0, 360 - platformWidth);
-            attempt++
-        }
-
-        if (attempt === maxAttempts) {
-            console.warn("Could not find a valid position for platform after maximum number of attempts");
-            return;
-        }
 
         let platformGroup = this.physics.add.staticGroup();
         const leftEdge = this.getPooledPlatform(posX, posY, 'platform-left');
         platformGroup.add(leftEdge);
+
+        const rightEdge = this.getPooledPlatform(posX + 32 * (numMiddleTiles + 1), posY, 'platform-right');
+        platformGroup.add(rightEdge);
 
         for (let i = 0; i < numMiddleTiles; i++) {
             const middle = this.getPooledPlatform(posX + 32 * (i + 1), posY, 'platform-middle');
             platformGroup.add(middle);
         }
 
-        const rightEdge = this.getPooledPlatform(posX + 32 * (numMiddleTiles + 1), posY, 'platform-right');
-        platformGroup.add(rightEdge);
-
         this.platforms.addMultiple(platformGroup.getChildren());
-        this.markGridCellAsOccupied(posX, posY);
-
-        platformGroup.children.iterate((platform) => {
-            this.physics.add.collider(this.player, platform);
-        });
+        this.physics.add.collider(this.player, platformGroup);
 
         this.lastPlatformY = posY;
-    }
-
-    isGridCellOccupied(posX, posY) {
-        const cellX = Math.floor(posX / 32);
-        const cellY = Math.floor(posY / 32);
-
-        if (this.platformGrid[cellX] && this.platformGrid[cellX][cellY]) return true;
-        return false;
-    }
-
-    markGridCellAsOccupied(posX, posY) {
-        const cellX = Math.floor(posX / 32);
-        const cellY = Math.floor(posY / 32);
-
-        if (!this.platformGrid[cellX]) this.platformGrid[cellX] = {};
-        this.platformGrid[cellX][cellY] = true;
     }
 
     getPooledPlatform(posX, posY, key) {
@@ -243,7 +211,9 @@ class GameScreen extends Phaser.Scene {
 
         if (!platform) {
             platform = this.physics.add.staticSprite(posX, posY, key).setOrigin(0, 0);
-            platform.body.allowGravity = false;
+            platform.body.checkCollision.down = false;
+            platform.body.checkCollision.left = false;
+            platform.body.checkCollision.right = false;
         } else {
             platform.reset(posX, posY);
             platform.active = true;
