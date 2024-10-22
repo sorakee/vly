@@ -9,6 +9,7 @@ const STARTPOX_Y = 480;
 const COLLSIZE_X = 20;
 const COLLSIZE_Y = 30;
 const MAX_VELOCITY_Y = -600;
+const PLATFORM_YSPACING = 150;
 
 class GameScreen extends Phaser.Scene {
     constructor() {
@@ -16,13 +17,17 @@ class GameScreen extends Phaser.Scene {
         this.socket = null;
         this.player = null;
         this.opponent = null;
-        this.platforms = null;
+        this.ground = null;
         this.cursors = null;
         this.gameOver = false;
         this.voiceMeter = null;
         this.playerSpeed = 200;
         this.scrollSpeed = 0.2;
         this.soundFX = new Map();
+        this.platformPool = null;
+        this.platformGrid = {};
+        this.platforms = null;
+        this.lastPlatformY = null;
     }
 
     init(data) {
@@ -32,6 +37,9 @@ class GameScreen extends Phaser.Scene {
 
     preload() {
         this.load.image('ground', 'src/assets/ground.png');
+        this.load.image('platform-left', 'src/assets/left-platform.png');
+        this.load.image('platform-middle', 'src/assets/middle-platform.png');
+        this.load.image('platform-right', 'src/assets/right-platform.png');
         this.load.spritesheet(
             'player', 'src/assets/player-spritesheet.png',
             { frameWidth: 32, frameHeight: 32 }
@@ -40,7 +48,6 @@ class GameScreen extends Phaser.Scene {
             'opponent', 'src/assets/opponent-spritesheet.png',
             { frameWidth: 32, frameHeight: 32 }
         );
-        this.load.audio('jumpSFX', 'src/assets/jumpSFX.mp3');
         this.load.audio('stepSFX', 'src/assets/stepSFX.mp3');
     }
 
@@ -49,8 +56,19 @@ class GameScreen extends Phaser.Scene {
 
         this.soundFX.set('stepSFX', this.sound.add('stepSFX', { loop: true, volume: 0.8 }))
 
-        this.platforms = this.physics.add.staticGroup();
-        this.platforms.create(gameWidth * 0.5, gameHeight * 0.9, 'ground');
+        this.platformPool = this.add.group({
+            removeCallback: function (platform) {
+                this.platforms.add(platform);
+            }
+        })
+        this.platforms = this.add.group({
+            removeCallback: function (platform) {
+                this.platformPool.add(platform);
+            }
+        });
+
+        this.ground = this.physics.add.staticGroup();
+        this.ground.create(gameWidth * 0.5, gameHeight * 0.9, 'ground');
 
         this.player = this.createCharacter(this, 'player');
         this.opponent = this.createCharacter(this, 'opponent', 0.5);
@@ -74,9 +92,13 @@ class GameScreen extends Phaser.Scene {
             repeat: 0
         });
 
-        this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.collider(this.opponent, this.platforms);
+        this.physics.add.collider(this.player, this.ground);
+        this.physics.add.collider(this.opponent, this.ground);
         this.opponent.body.onWorldBounds = false;
+
+        for (let i = 0; i < 5; i++) {
+            this.createPlatformAtPosY((this.sys.game.canvas.height - 32) - i * PLATFORM_YSPACING);
+        }
     }
 
     update() {
@@ -128,7 +150,7 @@ class GameScreen extends Phaser.Scene {
                 }
             }
         } else if (deltaY > -0.1 && this.player.body.onFloor() && this.player.anims.currentAnim?.key !== 'player-run') {
-            this.player.anims.play('player-run').on;
+            this.player.anims.play('player-run');
             if (!this.soundFX.get('stepSFX').isPlaying) {
                 this.soundFX.get('stepSFX').play();
             }
@@ -139,6 +161,10 @@ class GameScreen extends Phaser.Scene {
         this.platforms.children.iterate((platform) => {
             platform.y += this.scrollSpeed;
             platform.body.updateFromGameObject();
+        });
+        this.ground.children.iterate((ground) => {
+            ground.y += this.scrollSpeed;
+            ground.body.updateFromGameObject();
         });
     }
 
@@ -153,8 +179,79 @@ class GameScreen extends Phaser.Scene {
         }
     }
 
-    createPlatform() {
-        // TODO: Create a platform as game scrolls down
+    createPlatformAtPosY(posY) {
+        const minMiddleTiles = 1;
+        const maxMiddleTiles = 6;
+
+        const numMiddleTiles = Phaser.Math.Between(minMiddleTiles, maxMiddleTiles);
+        const platformWidth = (numMiddleTiles + 2) * 32;
+
+        let maxAttempts = 10;
+        let posX = Phaser.Math.Between(0, 360 - platformWidth);
+        let attempt = 0;
+
+        while (this.isGridCellOccupied(posX, posY) && attempt < maxAttempts) {
+            posX = Phaser.Math.Between(0, 360 - platformWidth);
+            attempt++
+        }
+
+        if (attempt === maxAttempts) {
+            console.warn("Could not find a valid position for platform after maximum number of attempts");
+            return;
+        }
+
+        let platformGroup = this.physics.add.staticGroup();
+        const leftEdge = this.getPooledPlatform(posX, posY, 'platform-left');
+        platformGroup.add(leftEdge);
+
+        for (let i = 0; i < numMiddleTiles; i++) {
+            const middle = this.getPooledPlatform(posX + 32 * (i + 1), posY, 'platform-middle');
+            platformGroup.add(middle);
+        }
+
+        const rightEdge = this.getPooledPlatform(posX + 32 * (numMiddleTiles + 1), posY, 'platform-right');
+        platformGroup.add(rightEdge);
+
+        this.platforms.addMultiple(platformGroup.getChildren());
+        this.markGridCellAsOccupied(posX, posY);
+
+        platformGroup.children.iterate((platform) => {
+            this.physics.add.collider(this.player, platform);
+        });
+
+        this.lastPlatformY = posY;
+    }
+
+    isGridCellOccupied(posX, posY) {
+        const cellX = Math.floor(posX / 32);
+        const cellY = Math.floor(posY / 32);
+
+        if (this.platformGrid[cellX] && this.platformGrid[cellX][cellY]) return true;
+        return false;
+    }
+
+    markGridCellAsOccupied(posX, posY) {
+        const cellX = Math.floor(posX / 32);
+        const cellY = Math.floor(posY / 32);
+
+        if (!this.platformGrid[cellX]) this.platformGrid[cellX] = {};
+        this.platformGrid[cellX][cellY] = true;
+    }
+
+    getPooledPlatform(posX, posY, key) {
+        let platform = this.platformPool.getFirstDead();
+
+        if (!platform) {
+            platform = this.physics.add.staticSprite(posX, posY, key).setOrigin(0, 0);
+            platform.body.allowGravity = false;
+        } else {
+            platform.reset(posX, posY);
+            platform.active = true;
+            platform.visible = true;
+            this.physics.world.enable(platform);
+        }
+
+        return platform;
     }
 }
 
