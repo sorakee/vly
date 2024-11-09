@@ -95,8 +95,11 @@ class GameScreen extends Phaser.Scene {
         this.physics.add.collider(this.opponent, this.ground);
         this.opponent.body.onWorldBounds = false;
 
+        // Initial platform generation (client-side)
+        // TODO: move this implementation to the server
         for (let i = 0; i < 5; i++) {
-            this.createPlatformAtPosY((this.sys.game.canvas.height - 32) - i * PLATFORM_YSPACING);
+            const yOffset = 240;
+            this.createPlatformAtPosY((this.sys.game.canvas.height - yOffset) - i * PLATFORM_YSPACING);
         }
     }
 
